@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL Analysis Projects</title>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #0f172a 100%);
+            color: white;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container { max-width: 1400px; margin: 0 auto; }
+
+        .header { text-align: center; margin-bottom: 3rem; }
+        .header-icon { font-size: 4rem; margin-bottom: 1rem; }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(to right, #60a5fa, #22d3ee);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header p { color: #d1d5db; font-size: 1.1rem; }
+
+        .project-nav {
+            display: flex; flex-wrap: wrap;
+            gap: 0.75rem;
+            justify-content: center;
+            margin-bottom: 2rem;
+        }
+
+        .project-btn {
+            padding: 0.75rem 1rem;
+            border: none; border-radius: 0.5rem;
+            background: #1e293b;
+            color: #d1d5db;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .project-btn:hover { background: #334155; }
+        .project-btn.active { background: linear-gradient(to right, #3b82f6, #22d3ee); color: white; }
+
+        .project-card {
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 1rem;
+            overflow: hidden;
+        }
+
+        .project-info {
+            background: rgba(15, 23, 42, 0.8);
+            padding: 2rem;
+        }
+
+        .sql-editor {
+            background: #020617;
+            padding: 1.5rem;
+        }
+
+        .editor-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .execute-btn, .toggle-sql-btn {
+            background: #16a34a;
+            border: none;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 700;
+            margin-left: .5rem;
+        }
+
+        .toggle-sql-btn {
+            background: #3b82f6;
+        }
+
+        .toggle-sql-btn:hover { background: #2563eb; }
+        .execute-btn:hover { background: #15803d; }
+
+        .code-block {
+            background: #0f172a;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+
+        .results-section { padding: 2rem; display: none; }
+        .results-section.show { display: block; }
+
+        table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+        th, td { padding: 1rem; border-bottom: 1px solid #334155; }
+        th { color: #22d3ee; text-transform: uppercase; }
+
+        .insights-box {
+            background: rgba(30, 64, 175, 0.2);
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            margin-bottom: 2rem;
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+
+    <div class="header">
+        <div class="header-icon">💾</div>
+        <h1>SQL Analysis Projects</h1>
+        <p>Comprehensive data analysis using advanced SQL techniques</p>
+    </div>
+
+    <div class="project-nav" id="projectNav"></div>
+
+    <div class="project-card">
+
+        <div class="project-info">
+            <h2 id="projectTitle"></h2>
+            <p id="projectDescription"></p>
+        </div>
+
+        <div class="sql-editor">
+            <div class="editor-header">
+                <span id="fileName">📝 query.sql</span>
+                <div>
+                    <button class="toggle-sql-btn" onclick="toggleSQL()">Show Full SQL</button>
+                    <button class="execute-btn" onclick="toggleResults()">▶ <span id="executeText">Execute Query</span></button>
+                </div>
+            </div>
+            <div class="code-block">
+                <pre id="sqlQuery"></pre>
+            </div>
+        </div>
+
+        <div class="results-section" id="resultsSection">
+            <h4 class="results-header">
+                ✓ Query Results (<span id="rowCount"></span> rows)
+            </h4>
+
+            <table id="resultsTable"></table>
+
+            <div class="insights-box">
+                <h5>📊 Key Insights:</h5>
+                <ul id="insightsList"></ul>
+            </div>
+
+            <canvas id="chartCanvas" height="120"></canvas>
+        </div>
+
+    </div>
+</div>
+
+<script>
+
+/* ---------- Data (same as before) ---------- */
+const sqlProjects = [
+    {
+        title: 'Customer Churn Analysis',
+        description: 'Identifying at-risk customers.',
+        query: `WITH customer_activity AS (
+   SELECT customer, last_purchase_date, DATEDIFF(day, last_purchase_date, GETDATE()) AS days_since_purchase
+   FROM orders
+)
+SELECT customer, last_purchase_date, days_since_purchase
+FROM customer_activity
+WHERE days_since_purchase > 20;`,
+        results: [
+            { customer: 'Global Systems', days_since_purchase: 41 },
+            { customer: 'Acme Corp', days_since_purchase: 28 },
+            { customer: 'DataCo', days_since_purchase: 33 },
+            { customer: 'TechStart Inc', days_since_purchase: 14 }
+        ],
+        insights: ['2 customers at risk']
+    },
+    {
+        title: 'Revenue Analysis by Region',
+        description: 'Revenue grouped by region.',
+        query: `SELECT region, SUM(revenue) AS total_revenue FROM sales GROUP BY region;`,
+        results: [
+            { region: 'North', total_revenue: 9500 },
+            { region: 'South', total_revenue: 7500 },
+            { region: 'East', total_revenue: 1200 }
+        ],
+        insights: ['North is leading region']
+    },
+    {
+        title: 'Customer Cohort Analysis',
+        description: 'Monthly customer cohorts.',
+        query: `WITH cohorts AS  SELECT * FROM cohorts;`,
+        results: [
+            { cohort_month: '2024-01', cohort_revenue: 14500 },
+            { cohort_month: '2024-02', cohort_revenue: 3700 }
+        ],
+        insights: ['January cohort strongest']
+    },
+    {
+        title: 'Product Mix & Cross-Sell',
+        description: 'Breakdown by product.',
+        query: `SELECT product, SUM(revenue) AS product_revenue FROM sales GROUP BY product;`,
+        results: [
+            { product: 'Consulting', product_revenue: 9500 },
+            { product: 'Software License', product_revenue: 7500 },
+            { product: 'Support Package', product_revenue: 1200 }
+        ],
+        insights: ['Consulting dominates']
+    },
+    {
+        title: 'RFM Segmentation',
+        description: 'Recency, Frequency & Monetary scoring.',
+        query: `WITH rfm AS (...) SELECT * FROM rfm;`,
+        results: [
+            { customer: 'TechStart Inc', rfm_total: 15 },
+            { customer: 'Acme Corp', rfm_total: 14 },
+            { customer: 'Global Systems', rfm_total: 10 }
+        ],
+        insights: ['Top customers identified']
+    },
+    {
+        title: 'Monthly Growth Analysis',
+        description: 'Monthly revenue trends.',
+        query: `SELECT month, SUM(revenue) AS revenue FROM sales GROUP BY month;`,
+        results: [
+            { month: '2024-01', revenue: 7500 },
+            { month: '2024-02', revenue: 8200 },
+            { month: '2024-03', revenue: 2500 }
+        ],
+        insights: ['Peak in Feb']
+    },
+    {
+        title: 'Customer Purchase Patterns',
+        description: 'Avg time between purchases.',
+        query: `WITH p AS (...) SELECT * FROM p;`,
+        results: [
+            { customer: 'Acme Corp', avg_days_between_purchases: 31 },
+            { customer: 'TechStart Inc', avg_days_between_purchases: 42 }
+        ],
+        insights: ['Purchase cycle 30–40 days']
+    }
+];
+
+/* ---------- Global SQL Storage ---------- */
+let fullSql = "";
+let previewSql = "";
+let sqlExpanded = false;
+
+/* ---------- Navigation Buttons ---------- */
+function createNavButtons() {
+    const nav = document.getElementById("projectNav");
+    sqlProjects.forEach((p, i) => {
+        const btn = document.createElement("button");
+        btn.className = "project-btn";
+        if (i === 0) btn.classList.add("active");
+        btn.textContent = p.title;
+        btn.onclick = () => loadProject(i);
+        nav.appendChild(btn);
+    });
+}
+
+/* ---------- Load Project ---------- */
+let chartInstance = null;
+
+function loadProject(index) {
+    const p = sqlProjects[index];
+
+    document.getElementById("projectTitle").textContent = p.title;
+    document.getElementById("projectDescription").textContent = p.description;
+    document.getElementById("fileName").textContent = `📝 query_${index + 1}.sql`;
+
+    // Store SQL versions
+    fullSql = p.query;
+    previewSql = p.query.split("\n")[0].trim() + " ...";
+
+    // Default to preview
+    sqlExpanded = false;
+    document.getElementById("sqlQuery").textContent = previewSql;
+    document.querySelector(".toggle-sql-btn").textContent = "Show Full SQL";
+
+    updateResults(p);
+    renderChart(p);
+
+    document.querySelectorAll(".project-btn").forEach((b, i) =>
+        b.classList.toggle("active", i === index)
+    );
+
+    document.getElementById("resultsSection").classList.add("show");
+}
+
+/* ---------- Toggle Full SQL ---------- */
+function toggleSQL() {
+    const sqlBox = document.getElementById("sqlQuery");
+    const btn = document.querySelector(".toggle-sql-btn");
+
+    if (sqlExpanded) {
+        sqlBox.textContent = previewSql;
+        btn.textContent = "Show Full SQL";
+    } else {
+        sqlBox.textContent = fullSql;
+        btn.textContent = "Hide SQL";
+    }
+
+    sqlExpanded = !sqlExpanded;
+}
+
+/* ---------- Update Results Table ---------- */
+function updateResults(p) {
+    document.getElementById("rowCount").textContent = p.results.length;
+
+    const table = document.getElementById("resultsTable");
+    table.innerHTML = "";
+
+    const header = document.createElement("tr");
+    Object.keys(p.results[0]).forEach(k => {
+        const th = document.createElement("th");
+        th.textContent = k.toUpperCase();
+        header.appendChild(th);
+    });
+    table.appendChild(header);
+
+    p.results.forEach(row => {
+        const tr = document.createElement("tr");
+        Object.values(row).forEach(v => {
+            const td = document.createElement("td");
+            td.textContent = v;
+            tr.appendChild(td);
+        });
+        table.appendChild(tr);
+    });
+
+    const ul = document.getElementById("insightsList");
+    ul.innerHTML = "";
+    p.insights.forEach(i => {
+        const li = document.createElement("li");
+        li.textContent = i;
+        ul.appendChild(li);
+    });
+}
+
+/* ---------- Charts ---------- */
+function renderChart(p) {
+    const ctx = document.getElementById("chartCanvas").getContext("2d");
+    if (chartInstance) chartInstance.destroy();
+
+    let labels = [];
+    let data = [];
+    let type = "bar";
+    let labelText = "";
+
+    switch (p.title) {
+        case "Customer Churn Analysis":
+            labels = p.results.map(r => r.customer);
+            data = p.results.map(r => r.days_since_purchase);
+            labelText = "Days Since Purchase";
+            break;
+
+        case "Revenue Analysis by Region":
+            labels = p.results.map(r => r.region);
+            data = p.results.map(r => r.total_revenue);
+            type = "pie";
+            labelText = "Revenue";
+            break;
+
+        case "Customer Cohort Analysis":
+            labels = p.results.map(r => r.cohort_month);
+            data = p.results.map(r => r.cohort_revenue);
+            type = "line";
+            labelText = "Revenue";
+            break;
+
+        case "Product Mix & Cross-Sell":
+            labels = p.results.map(r => r.product);
+            data = p.results.map(r => r.product_revenue);
+            labelText = "Revenue";
+            break;
+
+        case "RFM Segmentation":
+            labels = p.results.map(r => r.customer);
+            data = p.results.map(r => r.rfm_total);
+            labelText = "RFM Score";
+            break;
+
+        case "Monthly Growth Analysis":
+            labels = p.results.map(r => r.month);
+            data = p.results.map(r => r.revenue);
+            type = "line";
+            labelText = "Revenue";
+            break;
+
+        case "Customer Purchase Patterns":
+            labels = p.results.map(r => r.customer);
+            data = p.results.map(r => r.avg_days_between_purchases);
+            labelText = "Avg Days Between Purchases";
+            break;
+    }
+
+    chartInstance = new Chart(ctx, {
+        type,
+        data: {
+            labels,
+            datasets: [{
+                label: labelText,
+                data,
+                backgroundColor: [
+                    '#3b82f6', '#22d3ee', '#a78bfa',
+                    '#f472b6', '#34d399', '#facc15'
+                ],
+                borderColor: "white",
+                borderWidth: 1,
+                tension: 0.4
+            }]
+        },
+        options: {
+            plugins: { legend: { labels: { color: "white" } } },
+            scales: type === "pie" ? {} : {
+                y: { beginAtZero: true, ticks: { color: "white" } },
+                x: { ticks: { color: "white" } }
+            }
+        }
+    });
+}
+
+/* ---------- Toggle Results Section ---------- */
+function toggleResults() {
+    const section = document.getElementById("resultsSection");
+    const text = document.getElementById("executeText");
+
+    if (section.classList.contains("show")) {
+        section.classList.remove("show");
+        text.textContent = "Execute Query";
+    } else {
+        section.classList.add("show");
+        text.textContent = "Hide Results";
+    }
+}
+
+/* ---------- Init ---------- */
+window.onload = () => {
+    createNavButtons();
+    loadProject(0);
+};
+
+</script>
+</body>
+</html>
